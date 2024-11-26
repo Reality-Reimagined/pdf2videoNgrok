@@ -1,0 +1,171 @@
+PDF to Video Converter - Setup Instructions
+
+1. Database Setup
+----------------
+a) PostgreSQL Setup:
+   ```bash
+   # Install PostgreSQL
+   sudo apt-get update
+   sudo apt-get install postgresql postgresql-contrib
+
+   # Create database
+   createdb pdf_to_video
+   ```
+
+b) Database Schema:
+   ```sql
+   -- Users table
+   CREATE TABLE users (
+     id SERIAL PRIMARY KEY,
+     email VARCHAR(255) UNIQUE NOT NULL,
+     password_hash VARCHAR(255) NOT NULL,
+     name VARCHAR(255),
+     subscription_plan VARCHAR(50) DEFAULT 'free',
+     subscription_status VARCHAR(50) DEFAULT 'active',
+     subscription_valid_until TIMESTAMP,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Videos table
+   CREATE TABLE videos (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER REFERENCES users(id),
+     title VARCHAR(255) NOT NULL,
+     url VARCHAR(255),
+     thumbnail_url VARCHAR(255),
+     duration INTEGER,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- API Keys table
+   CREATE TABLE api_keys (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER REFERENCES users(id),
+     provider VARCHAR(50) NOT NULL,
+     api_key VARCHAR(255) NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+2. FastAPI Backend Setup
+-----------------------
+a) Create Virtual Environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+b) Install Dependencies:
+   ```bash
+   pip install fastapi uvicorn sqlalchemy psycopg2-binary python-jose[cryptography] passlib[bcrypt] python-multipart
+   ```
+
+c) Project Structure:
+   ```
+   backend/
+   ├── app/
+   │   ├── __init__.py
+   │   ├── main.py
+   │   ├── config.py
+   │   ├── database.py
+   │   ├── models/
+   │   │   ├── __init__.py
+   │   │   ├── user.py
+   │   │   └── video.py
+   │   ├── schemas/
+   │   │   ├── __init__.py
+   │   │   ├── user.py
+   │   │   └── video.py
+   │   └── api/
+   │       ├── __init__.py
+   │       ├── auth.py
+   │       ├── users.py
+   │       └── videos.py
+   └── requirements.txt
+   ```
+
+d) Environment Variables (.env):
+   ```
+   DATABASE_URL=postgresql://user:password@localhost/pdf_to_video
+   SECRET_KEY=your-secret-key
+   ALGORITHM=HS256
+   ACCESS_TOKEN_EXPIRE_MINUTES=30
+   ```
+
+3. Project Configuration
+-----------------------
+a) Frontend Configuration:
+   - Update vite.config.ts to proxy API requests:
+     ```typescript
+     export default defineConfig({
+       plugins: [react()],
+       server: {
+         proxy: {
+           '/api': {
+             target: 'http://localhost:8000',
+             changeOrigin: true,
+           },
+         },
+       },
+     });
+     ```
+
+b) Backend Configuration:
+   - Enable CORS in FastAPI:
+     ```python
+     from fastapi.middleware.cors import CORSMiddleware
+
+     app.add_middleware(
+         CORSMiddleware,
+         allow_origins=["http://localhost:5173"],
+         allow_credentials=True,
+         allow_methods=["*"],
+         allow_headers=["*"],
+     )
+     ```
+
+c) API Integration:
+   - Create API client in frontend:
+     ```typescript
+     // src/lib/api.ts
+     import axios from 'axios';
+
+     export const api = axios.create({
+       baseURL: '/api',
+       withCredentials: true,
+     });
+     ```
+
+4. Running the Application
+-------------------------
+a) Start Backend:
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload
+   ```
+
+b) Start Frontend:
+   ```bash
+   npm run dev
+   ```
+
+5. Additional Setup
+------------------
+a) Set up file storage:
+   - Configure S3 or similar for video storage
+   - Set up temporary storage for processing
+
+b) Configure LLM providers:
+   - Set up API keys for OpenAI, Groq, and Gemini
+   - Configure rate limiting and usage tracking
+
+c) Set up monitoring:
+   - Configure logging
+   - Set up error tracking (e.g., Sentry)
+   - Implement usage metrics
+
+d) Security considerations:
+   - Implement rate limiting
+   - Set up API key rotation
+   - Configure secure headers
+   - Implement request validation
