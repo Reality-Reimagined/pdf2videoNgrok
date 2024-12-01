@@ -3,6 +3,7 @@ import { useVideoStore } from '../../lib/store';
 import { CreateVideoDialog } from '../video/CreateVideoDialog';
 import { Video } from 'lucide-react';
 import { ShareButton } from '../share/ShareButton';
+import { VideoActions } from '../video/VideoActions';
 
 export function VideoList() {
   const { videos, refreshVideos } = useVideoStore();
@@ -78,10 +79,18 @@ export function VideoList() {
                     {new Date(video.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <ShareButton 
-                  videoUrl={video.url} 
-                  title={video.title}
-                />
+                <div className="flex items-center gap-2">
+                  <ShareButton 
+                    videoUrl={video.url} 
+                    title={video.title}
+                  />
+                  <VideoActions
+                    videoId={video.id}
+                    currentTitle={video.title}
+                    onDelete={handleVideoGenerated}
+                    onUpdate={handleVideoGenerated}
+                  />
+                </div>
               </div>
               {video.has_subtitles && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

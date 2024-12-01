@@ -43,20 +43,57 @@ const plans = [
 export const SubscriptionManager = () => {
   const { user } = useAuthStore();
   const [currentPlan, setCurrentPlan] = useState('Free');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkSubscription = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.log('No user ID found');
+        setIsLoading(false);
+        return;
+      }
 
-      const { data } = await supabase
-        .from('user_subscriptions')
-        .select('plan_type, status')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
+      try {
+        console.log('Checking subscription for user:', user.id);
 
-      if (data?.plan_type) {
-        setCurrentPlan(data.plan_type);
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('*')  // Select all columns for debugging
+          .eq('user_id', user.id);
+
+        console.log('Raw subscription data:', data);
+        console.log('Query error:', error);
+
+        if (error) {
+          console.error('Subscription check error:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Find active subscription
+          const activeSubscription = data.find(sub => 
+            sub.status === 'active' && 
+            (sub.plan_type === 'pro' || sub.plan_type === 'enterprise')
+          );
+
+          console.log('Active subscription found:', activeSubscription);
+
+          if (activeSubscription) {
+            const plan = activeSubscription.plan_type.toLowerCase();
+            console.log('Setting plan to:', plan);
+            setCurrentPlan(plan.charAt(0).toUpperCase() + plan.slice(1));
+          } else {
+            console.log('No active pro/enterprise subscription found');
+            setCurrentPlan('Free');
+          }
+        } else {
+          console.log('No subscriptions found for user');
+          setCurrentPlan('Free');
+        }
+      } catch (error) {
+        console.error('Subscription check failed:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -74,6 +111,18 @@ export const SubscriptionManager = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p>Loading subscription status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-12 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -84,6 +133,11 @@ export const SubscriptionManager = () => {
           <p className="mt-4 text-lg text-gray-600">
             Select the perfect plan for your needs
           </p>
+          {currentPlan !== 'Free' && (
+            <p className="mt-2 text-sm text-blue-600">
+              Current subscription: {currentPlan}
+            </p>
+          )}
         </div>
 
         <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:grid-cols-3">
@@ -96,6 +150,7 @@ export const SubscriptionManager = () => {
                 key={plan.name}
                 className={`rounded-lg shadow-lg divide-y divide-gray-200 bg-white
                   ${plan.popular ? 'ring-2 ring-blue-500' : ''}
+                  ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}
                 `}
               >
                 <div className="p-6">

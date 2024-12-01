@@ -27,12 +27,14 @@ export const CreateVideoDialog: React.FC<CreateVideoDialogProps> = ({ open, onOp
   const { isProcessing, setIsProcessing, selectedModel, theme, addSubtitles } = useVideoStore();
   const { user } = useAuthStore();
   const [currentProcessingStep, setCurrentProcessingStep] = useState(0);
+  const [videoTitle, setVideoTitle] = useState('');
 
   const handleDialogClose = () => {
     // Reset state when dialog is closed
     setStep(1);
     setPdfText('');
     setGeneratedScript('');
+    setVideoTitle('');
     setError(null);
     setCurrentProcessingStep(0);
     setIsProcessing(false);
@@ -90,6 +92,16 @@ export const CreateVideoDialog: React.FC<CreateVideoDialogProps> = ({ open, onOp
 
     const handleVideoGeneration = async () => {
     try {
+      if (!videoTitle.trim()) {
+        setError('Please provide a title for your video');
+        return;
+      }
+
+      if (!user) {
+        setError('User not authenticated');
+        return;
+      }
+
       setError(null);
       setIsProcessing(true);
       setCurrentProcessingStep(3);
@@ -98,37 +110,31 @@ export const CreateVideoDialog: React.FC<CreateVideoDialogProps> = ({ open, onOp
         throw new Error('No script available');
       }
 
-      const result = await apiService.generateVideo(generatedScript, theme, addSubtitles);
+      const result = await apiService.generateVideo(
+        generatedScript, 
+        theme, 
+        addSubtitles,
+        videoTitle.trim()
+      );
       console.log('Video generation result:', result);
 
       setCurrentProcessingStep(4);
-
-      await apiService.logVideo({
-        title: "Generated Video",
-        description: generatedScript,
-        videoPath: result.videoPath,
-        hasSubtitles: addSubtitles,
-      });
 
       if (typeof onVideoGenerated === 'function') {
         onVideoGenerated();
       }
 
-      // // Scroll to the progress bar
-      // if (progressBarRef.current) {
-      //   progressBarRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // }
-             // Scroll to the progress section
       if (progressSectionRef.current) {
         progressSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       setStep(4);
     } catch (error) {
       console.error('Video generation error:', error);
-      if (error.response?.data) {
-        console.error('Error details:', error.response.data);
+      if (!error.message.includes('404')) {
+        setError('Failed to generate video. Please try again.');
+      } else {
+        setStep(4);
       }
-      setError('Failed to generate video. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -206,6 +212,20 @@ export const CreateVideoDialog: React.FC<CreateVideoDialogProps> = ({ open, onOp
                 <div className="flex items-center gap-2 text-blue-600">
                   <VideoIcon className="w-5 h-5" />
                   <h3 className="font-medium">Generate Video</h3>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="video-title" className="block text-sm font-medium text-gray-700">
+                    Video Title
+                  </label>
+                  <input
+                    id="video-title"
+                    type="text"
+                    value={videoTitle}
+                    onChange={(e) => setVideoTitle(e.target.value)}
+                    placeholder="Enter video title"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
                 </div>
                 {generatedScript && (
                   <div className="p-4 bg-gray-50 rounded-md">
