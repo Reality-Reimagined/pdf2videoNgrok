@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
-import { useAuthStore } from '../src/lib/store';
+import { useAuthStore } from './lib/store';
 import { FacebookCallback } from './routes/auth/facebook/callback';
 import { SocialAccounts } from './components/dashboard/SocialAccounts';
 import { VideoRedirect } from './pages/VideoRedirect';
